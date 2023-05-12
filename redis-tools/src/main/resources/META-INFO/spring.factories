@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.sixsixdog.redis.tools.redistool.RedisUtil
