@@ -29,7 +29,7 @@ public class GenerateKeyAware implements GenerateKeyInterface{
             sb.append(data);
             sb.append(",");
         }
-        return preKeys + sb.toString();
+        return preKeys + sb;
     }
 
 }
