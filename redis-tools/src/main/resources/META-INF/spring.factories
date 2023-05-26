@@ -1,5 +1,5 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
     com.sixsixdog.redis.tools.redisCache.aspectj.CacheAspect,\
     com.sixsixdog.redis.tools.redistool.RedisUtil,\
-    com.sixsixdog.redis.tools.redisCache.config.RedisConfig,\
+    com.sixsixdog.redis.tools.redisCache.config.RedisTemplateConfig,\
     com.sixsixdog.redis.tools.redisCache.handler.DefualtParamFilterHandler

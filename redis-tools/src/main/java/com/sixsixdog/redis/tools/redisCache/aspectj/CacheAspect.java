@@ -1,7 +1,6 @@
 package com.sixsixdog.redis.tools.redisCache.aspectj;
 
 import com.sixsixdog.redis.tools.log.ColorLog;
-import com.sixsixdog.redis.tools.redisCache.config.RedisConfig;
 import com.sixsixdog.redis.tools.redisCache.handler.DefaultGenerateKey;
 import com.sixsixdog.redis.tools.redisCache.annotation.CacheHelper;
 import com.sixsixdog.redis.tools.redistool.RedisUtil;
@@ -11,19 +10,11 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Component;
 
-import java.io.PrintStream;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -38,12 +29,11 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @Order
 @Aspect
-@Component
 @ConditionalOnExpression("${corgi.redis.cache.enable:false}")
 public class CacheAspect {
     static ColorLog log = new ColorLog();
     CacheAspect() {
-        log.info( "创建CacheAspect{},{}",1);
+        log.info( "缓存切片CacheAspect已创建");
     }
 //    static Logger log = LoggerFactory.getLogger(CacheAspect.class);
     static Lock reenLock = new ReentrantLock(true);
@@ -101,11 +91,11 @@ public class CacheAspect {
                     proceed = redisUtil.get(key);
                     //确认缓存未命中后进行缓存更新
                     if (Objects.isNull(proceed)) {
-                        log.info("数据库获取:{}", key);
+                        log.info("数据库获取:[{}]", key);
                         //获取数据库数据
                         proceed = point.proceed();
                     } else {
-                        log.info("二次确认缓存命中:{}", key);
+                        log.info("二次确认缓存命中:[{}]", key);
                     }
                 } finally {
                     //condition.signalAll();
@@ -121,19 +111,19 @@ public class CacheAspect {
             int random = getExpireTime(anno);
             //是否缓存空对象
             if (anno.cacheNull()) {
-                log.info("缓存空对象:key{} , 缓存时效{}", key,random);
+                log.info("缓存空对象:key[{}] , 缓存时效{}", key,random);
                 redisUtil.set(key, proceed, random);
             } else {
                 if (!Objects.isNull(proceed)) {
-                    log.info("缓存对象:key{} , 缓存时效{}", key,random);
+                    log.info("缓存对象:key[{}] , 缓存时效{}", key,random);
                     redisUtil.set(key, proceed, random);
                 }else
-                    log.info("未缓存空对象:key{}", key);
+                    log.info("未缓存空对象:key[{}]", key);
             }
             return proceed;
         } else {
             expireTime = redisUtil.getExpire(key);
-            log.info("缓存命中:{},剩余时效:{}", key,expireTime);
+            log.info("缓存命中:[{}],剩余时效:{}", key,expireTime);
             return cache;
         }
     }

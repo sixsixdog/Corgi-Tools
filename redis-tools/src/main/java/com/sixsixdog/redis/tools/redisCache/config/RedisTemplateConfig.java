@@ -5,22 +5,21 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.sixsixdog.redis.tools.log.ColorLog;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-@Configuration
-@ConditionalOnMissingBean(RedisTemplate.class)
-public class RedisConfig {
+public class RedisTemplateConfig {
     ColorLog log = new ColorLog();
     @Bean
+    @ConditionalOnMissingBean(RedisTemplate.class)
+    @ConditionalOnExpression("${corgi.redis.cache.enable:false}")
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory ) {
-        log.info("创建RedisTemplate");
+        log.info("环境中不存在可用的RedisTemplate,创建默认RedisTemplate");
         RedisTemplate<String,Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(factory);
         //解决Redis  key的序列化方式

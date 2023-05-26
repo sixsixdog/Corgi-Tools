@@ -16,9 +16,7 @@ public abstract class ParamFilterHandler {
 
     ParamFilterHandler(){
         //去除java虚拟地址
-        addFilter((s)->{
-            return s.replaceAll("@[a-zA-Z0-9]*", "");
-        });
+        addFilter((s)-> s.replaceAll("@[a-zA-Z0-9]*", ""));
     }
     protected List<Function<String, String>> filters = new ArrayList<>();
     /**

@@ -22,7 +22,7 @@ public class ColorLog {
     private static final String ANSI_PURPLE ="\u001B[95m";
     private static final String ANSI_CYAN ="\u001B[96m";
     private static final String ANSI_WHITE ="\u001B[37m";
-    private static final String PREFIX =ANSI_RED+"C"+ANSI_PURPLE+"o"+ANSI_CYAN+"r"+ANSI_BLUE+"g"+ANSI_YELLOW+"i"+ANSI_RESET+": ";
+    private static final String PREFIX =ANSI_RED+"C"+ANSI_PURPLE+"o"+ANSI_CYAN+"r"+ANSI_YELLOW+"g"+ANSI_BLUE+"i"+ANSI_RESET+": ";
     private static final PropertyPlaceholderHelper resolver = new PropertyPlaceholderHelper("{","}");
 
 
