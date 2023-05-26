@@ -1,6 +1,6 @@
 package com.sixsixdog.redis.tools.redisCache.annotation;
 
-import com.sixsixdog.redis.tools.redisCache.handler.GenerateKeyAware;
+import com.sixsixdog.redis.tools.redisCache.handler.DefaultGenerateKey;
 import com.sixsixdog.redis.tools.redisCache.handler.GenerateKeyInterface;
 
 import java.lang.annotation.*;
@@ -28,7 +28,7 @@ public @interface CacheHelper {
      * 缓存key生成接口,用于自定义key生成规则
      * @return 返回以类名函数为分组:参数为key的值
      */
-    Class<? extends GenerateKeyInterface> generateKey() default GenerateKeyAware.class;
+    Class<? extends GenerateKeyInterface> generateKey() default DefaultGenerateKey.class;
     /**
      * 缓存时间(秒)
      * @return

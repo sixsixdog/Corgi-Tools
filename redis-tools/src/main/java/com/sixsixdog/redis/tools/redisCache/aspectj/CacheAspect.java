@@ -1,6 +1,8 @@
 package com.sixsixdog.redis.tools.redisCache.aspectj;
 
-import com.sixsixdog.redis.tools.redisCache.handler.GenerateKeyAware;
+import com.sixsixdog.redis.tools.log.ColorLog;
+import com.sixsixdog.redis.tools.redisCache.config.RedisConfig;
+import com.sixsixdog.redis.tools.redisCache.handler.DefaultGenerateKey;
 import com.sixsixdog.redis.tools.redisCache.annotation.CacheHelper;
 import com.sixsixdog.redis.tools.redistool.RedisUtil;
 import org.apache.commons.lang3.StringUtils;
@@ -12,10 +14,16 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -31,50 +39,18 @@ import java.util.concurrent.locks.ReentrantLock;
 @Order
 @Aspect
 @Component
+@ConditionalOnExpression("${corgi.redis.cache.enable:false}")
 public class CacheAspect {
-    static Logger log = LoggerFactory.getLogger(CacheAspect.class);
+    static ColorLog log = new ColorLog();
+    CacheAspect() {
+        log.info( "创建CacheAspect{},{}",1);
+    }
+//    static Logger log = LoggerFactory.getLogger(CacheAspect.class);
     static Lock reenLock = new ReentrantLock(true);
     static Condition condition = reenLock.newCondition();
     @Autowired
     private RedisUtil redisUtil;
     private static boolean outputAll = true;
-
-    //随机时间生成,静态内联优化
-    private static int random(int val, int max, int min) {
-        return (int) (val + min + Math.random() * (max - min) + 1);
-    }
-
-    private static void info(boolean bOutput, String msg) {
-        if (bOutput || outputAll) {
-            log.debug(msg);
-        }
-    }
-
-    private static void info(boolean bOutput, String msg, Object... params) {
-        if (bOutput || outputAll) {
-            log.debug(msg, params);
-        }
-    }
-
-    private static void debug(boolean bOutput, String msg) {
-        if (bOutput || outputAll) {
-            log.debug(msg);
-        }
-    }
-
-    private static void debug(boolean bOutput, String msg, Object... params) {
-        if (bOutput || outputAll) {
-            log.debug(msg, params);
-        }
-    }
-
-    private static void error(String msg) {
-        log.error(msg);
-    }
-
-    private static void error(String msg, Object... params) {
-        log.error(msg, params);
-    }
 
 
     @Pointcut("@annotation(com.sixsixdog.redis.tools.redisCache.annotation.CacheHelper)")
@@ -89,20 +65,20 @@ public class CacheAspect {
         CacheHelper annotation = AnnotationUtils.findAnnotation(signature.getMethod(), CacheHelper.class);
         if (annotation == null) {
             Object proceed = point.proceed();
-            error("缓存切面错误,无法获取注解,未启用缓存获取:实例[{}]-对象[{}]-方法[{}]", aClass.getName(), signature, signature.getMethod().getName());
+            log.error("缓存切面错误,无法获取注解,未启用缓存获取:实例[{}]-对象[{}]-方法[{}]", aClass.getName(), signature, signature.getMethod().getName());
             return proceed;
         }
         //检查必要参数
         if (StringUtils.isBlank(annotation.key()) && annotation.generateKey() == null) {
             Object proceed = point.proceed();
-            error("缓存切面错误,未指定缓存key和key生成器,未启用缓存获取");
+            log.error("缓存切面错误,未指定缓存key和key生成器,未启用缓存获取");
             return proceed;
         }
         String cacheKey = null;
         //若没有key传入使用key工厂生成key
         if (StringUtils.isBlank(annotation.key())) {
             Class generateKey = annotation.generateKey();
-            GenerateKeyAware generate = (GenerateKeyAware) generateKey.newInstance();
+            DefaultGenerateKey generate = (DefaultGenerateKey) generateKey.newInstance();
             cacheKey = generate.generateKey(signature, point);
         } else {
             cacheKey = annotation.key();
@@ -113,6 +89,7 @@ public class CacheAspect {
 
     private Object getSetCache(boolean bOutput, String key, CacheHelper anno, ProceedingJoinPoint point) throws Throwable {
         Object proceed;
+        Long expireTime;
         //尝试获取缓存
         Object cache = redisUtil.get(key);
         //缓存未命中
@@ -124,11 +101,11 @@ public class CacheAspect {
                     proceed = redisUtil.get(key);
                     //确认缓存未命中后进行缓存更新
                     if (Objects.isNull(proceed)) {
-                        info(bOutput, "数据库获取:{}", key);
+                        log.info("数据库获取:{}", key);
                         //获取数据库数据
                         proceed = point.proceed();
                     } else {
-                        info(bOutput, "二次确认缓存命中:{}", key);
+                        log.info("二次确认缓存命中:{}", key);
                     }
                 } finally {
                     //condition.signalAll();
@@ -141,26 +118,33 @@ public class CacheAspect {
                 return getSetCache(bOutput, key, anno, point);
             }
             //获取随机过期时间
-            int random = 0;
-            //随机过期时间计算
-            if (anno.randomExpire()) {
-                random = random(anno.expire(), anno.maxValue(), anno.minValue());
-            } else {
-                random = anno.expire();
-            }
+            int random = getExpireTime(anno);
             //是否缓存空对象
             if (anno.cacheNull()) {
+                log.info("缓存空对象:key{} , 缓存时效{}", key,random);
                 redisUtil.set(key, proceed, random);
             } else {
                 if (!Objects.isNull(proceed)) {
+                    log.info("缓存对象:key{} , 缓存时效{}", key,random);
                     redisUtil.set(key, proceed, random);
-                }
+                }else
+                    log.info("未缓存空对象:key{}", key);
             }
             return proceed;
         } else {
-            info(bOutput,"缓存命中:{}", key);
+            expireTime = redisUtil.getExpire(key);
+            log.info("缓存命中:{},剩余时效:{}", key,expireTime);
             return cache;
         }
+    }
+    private static int  getExpireTime(CacheHelper annotation) {
+        int expireTime = 0;
+        if (annotation.randomExpire()) {
+            expireTime = (int) (expireTime + annotation.minValue() + Math.random() * (annotation.maxValue() - annotation.minValue()) + 1);
+        }else{
+            expireTime = annotation.expire();
+        }
+        return expireTime;
     }
 
 }

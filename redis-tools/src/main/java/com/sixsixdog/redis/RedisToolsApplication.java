@@ -1,13 +1,14 @@
 package com.sixsixdog.redis;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import com.sixsixdog.redis.tools.dataTools.BitMapTool;
 
+@SpringBootApplication
 public class RedisToolsApplication {
 
     public static void main(String[] args) {
-        BitMapTool tool = new BitMapTool();
-
+        SpringApplication.run(RedisToolsApplication.class, args);
     }
 
 }
